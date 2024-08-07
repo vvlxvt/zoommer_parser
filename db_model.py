@@ -1,26 +1,21 @@
+from sqlalchemy import Integer, String, Date, Index
+from sqlalchemy.orm import declarative_base, Mapped, mapped_column
 from typing import Optional
-from sqlalchemy import String, Date
-from sqlalchemy.orm import DeclarativeBase
-from sqlalchemy.orm import Mapped
-from sqlalchemy.orm import mapped_column
 
-class Base(DeclarativeBase):
-    pass
+Base = declarative_base()
+
 class ItemBase(Base):
     __abstract__ = True  # Делаем класс абстрактным
     index: Mapped[int] = mapped_column(primary_key=True)
     date_field: Mapped[str] = mapped_column(Date)
-    id: Mapped[int]
+    id: Mapped[int] = mapped_column(Integer, index=True)  # Индексируем столбец id
     name: Mapped[str] = mapped_column(String(80))
     price: Mapped[Optional[float]]
 
     def __repr__(self) -> str:
         return f"Product(id={self.id!r}, name={self.name!r}, price={self.price!r})"
 
-
 def create_item_class(category: str) -> type:
-    subclasses = Base.__subclasses__()
-    print(subclasses)
     class_name = f"{category.capitalize()}Item"
 
     # Проверяем, существует ли уже класс с таким именем
@@ -30,6 +25,7 @@ def create_item_class(category: str) -> type:
     # Создаем новый класс, если он не существует
     class Item(ItemBase):
         __tablename__ = category.lower()
+        __table_args__ = (Index(f'id_{category[:3]}', 'id'),)  # Добавляем индекс
 
     # Переименовываем класс
     Item.__name__ = class_name

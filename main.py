@@ -1,12 +1,13 @@
 import requests
 from datetime import date
-from sqlalchemy import create_engine
-from db_model import Base, create_item_class
+from sqlalchemy import create_engine, select
+from db_model import create_item_class
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
+
 
 class Products:
-
+    '''делает запрос на сайт zoommer для получения информации по категории товара'''
     headers = {'accept': 'application/json, text/plain, */*', 'accept-language': 'en',
         'authorization': 'Bearer eyJhbGciOiJSUzI1NiIsImtpZCI6IjBFMDgxN0I0M0VGNDM0RDhGNkQ5MjgwNzM1NDczQjlEIiwidHlwIjoiYXQrand0In0.eyJuYmYiOjE3MjA1Mjg5OTgsImV4cCI6MjAzNTg4ODk5OCwiaXNzIjoiaHR0cHM6Ly9hcGkuem9vbW1lci5nZS8iLCJhdWQiOiJBcGkiLCJjbGllbnRfaWQiOiJab29tZXJXZWIiLCJqdGkiOiI1NzM2MzNERjE4QzZGQzEyRjc4QjdENTQ3RDZFNzVGMSIsImlhdCI6MTcyMDUyODk5OCwic2NvcGUiOlsiWm9vbWVyQXBpIl19.cy7VorJBud_9HwekdXhDq3OChIsaCxhQAFu8aw4rXzOBwLafN6SOlNP9aQXmA0bMOZ7KlY7urNnpDroppSg8dgP92v-klOImh4MvuwYySftHUC01_it7g9gif-cWKNa0Hr_xkYKDJA3SvupNt7EoaiwxemBrRB-rx72y9vrU_sNo5eQMVh1Ve9oWVINTqdjnbRfQDpEO3clR6JJdyjtqzjYi4VhNqPw0k-2OqwCs9MghfSF7ctsaqdL0Gpyg-Kn2BXozTG7vEq9JP1YIL4pDQJNnnpLhjfqXb4zNF9k4SumDxXigMMT2VQUqwxduaz7KQZSdwqKztO2Id9wFVC0DvA',
         'dnt': '1', 'origin': 'https://zoommer.ge', 'os': 'web', 'priority': 'u=1, i', 'referer': 'https://zoommer.ge/',
@@ -51,30 +52,49 @@ class Products:
         response = requests.get('https://api.zoommer.ge/v1/Products/v3',
                                 params=self.params,
                                 headers=self.headers).json()
-        self.products = response.get('products')
-        self.dump()
+        return response.get('products')
 
-    def dump(self):
-        engine = create_engine('sqlite:///zoommer.db', echo=False)
-        Item = create_item_class(self.category)
-        print(Item.__table__)
-        Item.__table__.create(bind=engine, checkfirst=True)
-        print(type(Item))
+
+
+
+
+class ConnectionDB:
+    def __init__(self, url):
+        self.url = url
+        self.engine = create_engine(url, echo=True)
+        self.SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=self.engine)
+
+    def get_session(self):
+        """Создание новой сессии"""
+        return self.SessionLocal()
+
+    def init_db(self, category):
+        """Инициализация базы данных и создание всех таблиц"""
+        self.Item = create_item_class(category)
+        self.Item.__table__.create(bind=self.engine, checkfirst=True)
+        print(f'таблица {self.Item.__name__} создана')
+
+    def dump2table(self, products):
         Pack = []
-        with Session(engine) as session:
-            session.query(Item).delete()
+        with self.SessionLocal() as session:
+            session.query(self.Item).delete()
             session.commit()
-            for item in self.products:
+            for item in products:
                 id = item['id']
                 model = item['name'][:80]
                 price = item['price']
-                Pack.append(Item(date_field = date.today(),id=id, name=model, price=price, ))
+                Pack.append(self.Item(date_field = date.today(),id=id, name=model, price=price, ))
             print(f'найдено позиций {len(Pack)}\n')
             session.add_all(Pack)
             session.commit()
 
-    def get_records(self):
-        pass
+# def get_dict(db, table):
+#     session = Session(engine)
+#     items = session.query(Item).all()
+#     for item in items:
+#         print(item)
+
+
 
 def main():
     cats = Products.cats
@@ -87,8 +107,12 @@ def main():
         category = input('>> ')
         print(f"Введите бренд товара:\n")
         brand = input('>> ').lower()
-        quaries = Products(brand,category)
-        quaries.get_query_params()
+        quaries = Products(brand, category)
+        category = quaries.category
+        products = quaries.get_query_params()
+        db = ConnectionDB('sqlite:///zoommer.db')
+        db.init_db(category)
+        db.dump2table(products)
 
 
 if __name__ == '__main__':
@@ -96,3 +120,22 @@ if __name__ == '__main__':
 
 
 
+# db = Database('sqlite:///example.db')
+#
+# # Инициализация базы данных и создание таблиц
+# db.init_db()
+#
+# # Получение сессии и работа с ней
+# session = db.get_session()
+# try:
+#     # Добавление нового товара
+#     new_product = Product(name='Product C', price=30.99)
+#     session.add(new_product)
+#     session.commit()
+#
+#     # Получение всех товаров
+#     products = session.query(Product).all()
+#     for product in products:
+#         print(product)
+# finally:
+#     session.close()  # Закрытие сессии
