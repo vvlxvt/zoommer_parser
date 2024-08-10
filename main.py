@@ -90,6 +90,9 @@ class ConnectionDB:
         products = session.query(request_class).all()
         print(products[0])
 
+    def check_prices(self):
+        pass
+
 
 
 def main():
