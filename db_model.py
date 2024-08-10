@@ -16,8 +16,8 @@ class ItemBase(Base):
         return f"Product(id={self.id!r}, name={self.name!r}, price={self.price!r})"
 
 def create_item_class(category: str) -> type:
+    # class_name = ''.join(list(map(str.capitalize, category.split(' '))))+'Item'
     class_name = f"{category.capitalize()}Item"
-
     # Проверяем, существует ли уже класс с таким именем
     if class_name in globals():
         return globals()[class_name]

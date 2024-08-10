@@ -1,9 +1,8 @@
 import requests
 from datetime import date
 from sqlalchemy import create_engine, select
-from db_model import create_item_class
-
 from sqlalchemy.orm import Session, sessionmaker
+from db_model import create_item_class
 
 
 class Products:
@@ -55,13 +54,10 @@ class Products:
         return response.get('products')
 
 
-
-
-
 class ConnectionDB:
     def __init__(self, url):
         self.url = url
-        self.engine = create_engine(url, echo=True)
+        self.engine = create_engine(url, echo=False)
         self.SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=self.engine)
 
     def get_session(self):
@@ -88,11 +84,11 @@ class ConnectionDB:
             session.add_all(Pack)
             session.commit()
 
-# def get_dict(db, table):
-#     session = Session(engine)
-#     items = session.query(Item).all()
-#     for item in items:
-#         print(item)
+    def get_dict(self, cat):
+        session = self.get_session()
+        request_class = create_item_class(cat)
+        products = session.query(request_class).all()
+        print(products[0])
 
 
 
@@ -113,29 +109,10 @@ def main():
         db = ConnectionDB('sqlite:///zoommer.db')
         db.init_db(category)
         db.dump2table(products)
+        db.get_dict('laptops')
 
 
 if __name__ == '__main__':
     main()
 
 
-
-# db = Database('sqlite:///example.db')
-#
-# # Инициализация базы данных и создание таблиц
-# db.init_db()
-#
-# # Получение сессии и работа с ней
-# session = db.get_session()
-# try:
-#     # Добавление нового товара
-#     new_product = Product(name='Product C', price=30.99)
-#     session.add(new_product)
-#     session.commit()
-#
-#     # Получение всех товаров
-#     products = session.query(Product).all()
-#     for product in products:
-#         print(product)
-# finally:
-#     session.close()  # Закрытие сессии
