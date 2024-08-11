@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from db_model import create_item_class
 
 
+
 class Products:
     '''делает запрос на сайт zoommer для получения информации по категории товара'''
     headers = {'accept': 'application/json, text/plain, */*', 'accept-language': 'en',
@@ -21,7 +22,8 @@ class Products:
             'Self-care': '490',
             'laptops': '813',
             'Smart watches': '1174',
-            'Portable speakers': '528',}
+            'Portable speakers': '528',
+            'Tablets': '877',}
 
     list_cats = list(cats.keys())
 
@@ -45,13 +47,22 @@ class Products:
             'CategoryId': self.id_category,
         }
 
-
     def get_query_params(self):
-
         response = requests.get('https://api.zoommer.ge/v1/Products/v3',
                                 params=self.params,
                                 headers=self.headers).json()
-        return response.get('products')
+        result = response.get('products')
+        return result
+
+    def query_from_api(self)->list:
+        # request data from source
+        products: list = self.get_query_params()
+        keys_to_keep = ['id', 'name', 'price']
+        new_list = []
+        for p in products:
+            filtered_data = {key: p[key] for key in keys_to_keep if key in p}
+            new_list.append(filtered_data)
+        return new_list
 
 
 class ConnectionDB:
@@ -71,28 +82,29 @@ class ConnectionDB:
         print(f'таблица {self.Item.__name__} создана')
 
     def dump2table(self, products):
+        ''' сюда должен передаваться словарь '''
         Pack = []
         with self.SessionLocal() as session:
             session.query(self.Item).delete()
             session.commit()
             for item in products:
                 id = item['id']
-                model = item['name'][:80]
+                name = item['name'][:80]
                 price = item['price']
-                Pack.append(self.Item(date_field = date.today(),id=id, name=model, price=price, ))
+                Pack.append(self.Item(date_field = date.today(),id=id, name=name, price=price, ))
             print(f'найдено позиций {len(Pack)}\n')
             session.add_all(Pack)
             session.commit()
 
-    def get_dict(self, cat):
+
+    def upload_from_base(self, cat: str)-> dict:
         session = self.get_session()
         request_class = create_item_class(cat)
         products = session.query(request_class).all()
-        print(products[0])
+        return products
 
-    def check_prices(self):
-        pass
-
+    def check_prices(self, category):
+         pass
 
 
 def main():
@@ -101,11 +113,24 @@ def main():
     for index, c in enumerate(cats, start=1):
         formatted_string += f"{index}. {c}\n"
 
+
     while True:
         print(f"Введите категорию товара:\n{formatted_string}")
         category = input('>> ')
         print(f"Введите бренд товара:\n")
         brand = input('>> ').lower()
+        zoommer = Products(brand=brand, index=category)
+        data = zoommer.query_from_api()
+        print(*data)
+        db = ConnectionDB('sqlite:///zoommer.db')
+        db.init_db(zoommer.category)
+        # db.dump2table(prods)
+        records = db.upload_from_base(category)
+        print(*records)
+        # stmt = select(Products).where(Products.id == pi['id'])
+        # patrick = db.SessionLocal.scalars(stmt).one()
+
+        '''
         quaries = Products(brand, category)
         category = quaries.category
         products = quaries.get_query_params()
@@ -113,7 +138,7 @@ def main():
         db.init_db(category)
         db.dump2table(products)
         db.get_dict('laptops')
-
+        '''
 
 if __name__ == '__main__':
     main()
