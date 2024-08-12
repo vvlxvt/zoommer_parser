@@ -5,7 +5,6 @@ from sqlalchemy.orm import Session, sessionmaker
 from db_model import create_item_class
 
 
-
 class Products:
     '''делает запрос на сайт zoommer для получения информации по категории товара'''
     headers = {'accept': 'application/json, text/plain, */*', 'accept-language': 'en',
@@ -69,7 +68,7 @@ class ConnectionDB:
     def __init__(self, url):
         self.url = url
         self.engine = create_engine(url, echo=False)
-        self.SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=self.engine)
+        self.SessionLocal = sessionmaker(autocommit=False, autoflush=True, bind=self.engine)
 
     def get_session(self):
         """Создание новой сессии"""
@@ -81,27 +80,32 @@ class ConnectionDB:
         self.Item.__table__.create(bind=self.engine, checkfirst=True)
         print(f'таблица {self.Item.__name__} создана')
 
+    def update_table(self, products):
+        with self.SessionLocal() as session:
+            session.add_all(products)
+            session.commit()
+
     def dump2table(self, products):
-        ''' сюда должен передаваться словарь '''
+        ''' сюда должен передаваться список словарей '''
         Pack = []
         with self.SessionLocal() as session:
-            session.query(self.Item).delete()
-            session.commit()
             for item in products:
                 id = item['id']
                 name = item['name'][:80]
                 price = item['price']
-                Pack.append(self.Item(date_field = date.today(),id=id, name=name, price=price, ))
-            print(f'найдено позиций {len(Pack)}\n')
-            session.add_all(Pack)
+                Pack.append(self.Item(id=id,
+                                      date_field=date.today(),
+                                      name=name,
+                                      price=price, ))
+            session.add_all(products)
             session.commit()
 
 
-    def upload_from_base(self, cat: str)-> dict:
+    def upload_from_base(self, cat: str, id)-> dict:
         session = self.get_session()
         request_class = create_item_class(cat)
-        products = session.query(request_class).all()
-        return products
+        product = session.query(request_class).filter_by(id=id).first()
+        return product
 
     def check_prices(self, category):
          pass
@@ -113,32 +117,44 @@ def main():
     for index, c in enumerate(cats, start=1):
         formatted_string += f"{index}. {c}\n"
 
-
     while True:
         print(f"Введите категорию товара:\n{formatted_string}")
         category = input('>> ')
+
         print(f"Введите бренд товара:\n")
         brand = input('>> ').lower()
-        zoommer = Products(brand=brand, index=category)
-        data = zoommer.query_from_api()
-        print(*data)
-        db = ConnectionDB('sqlite:///zoommer.db')
-        db.init_db(zoommer.category)
-        # db.dump2table(prods)
-        records = db.upload_from_base(category)
-        print(*records)
-        # stmt = select(Products).where(Products.id == pi['id'])
-        # patrick = db.SessionLocal.scalars(stmt).one()
 
-        '''
-        quaries = Products(brand, category)
-        category = quaries.category
-        products = quaries.get_query_params()
-        db = ConnectionDB('sqlite:///zoommer.db')
-        db.init_db(category)
-        db.dump2table(products)
-        db.get_dict('laptops')
-        '''
+        zoommer = Products(brand=brand, index=category) # получаю структуру для запроса
+        data = zoommer.query_from_api() # получаю список товаров из запроса
+        category = zoommer.category
+
+        db = ConnectionDB('sqlite:///zoommer.db') # устанавливаю соединение с бд
+        db.init_db(zoommer.category) # устанавливаю соединение с таблицей
+
+        new_prices = []
+        new_records = []
+        for d in data:
+            # разбираю данные из запроса
+            # если цена старая из дб дороже новой, то меняю цену на меньшую и при этом ставлю декущую дату
+            record = db.upload_from_base(category, d['id'])
+            if record := db.upload_from_base(category, d['id']):
+                if record.price > d['price']:
+                    record.price = d['price']
+                    new_prices.append(record)
+            else:
+                element = dict(id = d['id'],
+                               date_field=date.today(),
+                               name = d['name'],
+                               price= d['price']
+                               )
+                new_records.append(element)
+        if new_records:
+            db.dump2table(new_records)
+        if new_prices:
+            db.updatetable(new_prices)
+
+
+
 
 if __name__ == '__main__':
     main()
