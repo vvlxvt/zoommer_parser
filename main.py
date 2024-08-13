@@ -67,7 +67,7 @@ class Products:
 class ConnectionDB:
     def __init__(self, url):
         self.url = url
-        self.engine = create_engine(url, echo=False)
+        self.engine = create_engine(url, echo=False,pool_size=10,max_overflow=20,pool_timeout=30)
         self.SessionLocal = sessionmaker(autocommit=False, autoflush=True, bind=self.engine)
 
     def get_session(self):
@@ -80,9 +80,9 @@ class ConnectionDB:
         self.Item.__table__.create(bind=self.engine, checkfirst=True)
         print(f'таблица {self.Item.__name__} создана')
 
-    def update_table(self, products):
+    def update_table(self, product):
         with self.SessionLocal() as session:
-            session.add_all(products)
+            session.merge(product)
             session.commit()
 
     def dump2table(self, products):
@@ -97,7 +97,7 @@ class ConnectionDB:
                                       date_field=date.today(),
                                       name=name,
                                       price=price, ))
-            session.add_all(products)
+            session.add_all(Pack)
             session.commit()
 
 
@@ -136,11 +136,13 @@ def main():
         for d in data:
             # разбираю данные из запроса
             # если цена старая из дб дороже новой, то меняю цену на меньшую и при этом ставлю декущую дату
-            record = db.upload_from_base(category, d['id'])
             if record := db.upload_from_base(category, d['id']):
                 if record.price > d['price']:
+                    print(f'!New Price! was {record.price} becomes {d["price"]}')
                     record.price = d['price']
-                    new_prices.append(record)
+                    record.date_field = date.today()
+                    db.update_table(record)
+
             else:
                 element = dict(id = d['id'],
                                date_field=date.today(),
@@ -150,10 +152,6 @@ def main():
                 new_records.append(element)
         if new_records:
             db.dump2table(new_records)
-        if new_prices:
-            db.updatetable(new_prices)
-
-
 
 
 if __name__ == '__main__':
