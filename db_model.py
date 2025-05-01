@@ -4,6 +4,7 @@ from typing import Optional
 
 Base = declarative_base()
 
+
 class ItemBase(Base):
     __abstract__ = True  # Делаем класс абстрактным
     index: Mapped[int] = mapped_column(primary_key=True)
@@ -15,6 +16,7 @@ class ItemBase(Base):
     def __repr__(self) -> str:
         return f"Product(id={self.id!r}, name={self.name!r}, price={self.price!r})"
 
+
 def create_item_class(category: str) -> type:
     # class_name = ''.join(list(map(str.capitalize, category.split(' '))))+'Item'
     class_name = f"{category.capitalize()}Item"
@@ -25,7 +27,7 @@ def create_item_class(category: str) -> type:
     # Создаем новый класс, если он не существует
     class Item(ItemBase):
         __tablename__ = category.lower()
-        __table_args__ = (Index(f'id_{category[:3]}', 'id'),)  # Добавляем индекс
+        __table_args__ = (Index(f"id_{category[:3]}", "id"),)  # Добавляем индекс
 
     # Переименовываем класс
     Item.__name__ = class_name
