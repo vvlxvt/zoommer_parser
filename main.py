@@ -1,6 +1,6 @@
 from datetime import date
 
-import requests
+import requests, json
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -11,21 +11,23 @@ class Products:
     """делает запрос на сайт zoommer для получения информации по категории товара"""
 
     headers = {
-        "accept": "application/json, text/plain, */*",
-        "accept-language": "en",
-        "authorization": "Bearer eyJhbGciOiJSUzI1NiIsImtpZCI6IjBFMDgxN0I0M0VGNDM0RDhGNkQ5MjgwNzM1NDczQjlEIiwidHlwIjoiYXQrand0In0.eyJuYmYiOjE3MjA1Mjg5OTgsImV4cCI6MjAzNTg4ODk5OCwiaXNzIjoiaHR0cHM6Ly9hcGkuem9vbW1lci5nZS8iLCJhdWQiOiJBcGkiLCJjbGllbnRfaWQiOiJab29tZXJXZWIiLCJqdGkiOiI1NzM2MzNERjE4QzZGQzEyRjc4QjdENTQ3RDZFNzVGMSIsImlhdCI6MTcyMDUyODk5OCwic2NvcGUiOlsiWm9vbWVyQXBpIl19.cy7VorJBud_9HwekdXhDq3OChIsaCxhQAFu8aw4rXzOBwLafN6SOlNP9aQXmA0bMOZ7KlY7urNnpDroppSg8dgP92v-klOImh4MvuwYySftHUC01_it7g9gif-cWKNa0Hr_xkYKDJA3SvupNt7EoaiwxemBrRB-rx72y9vrU_sNo5eQMVh1Ve9oWVINTqdjnbRfQDpEO3clR6JJdyjtqzjYi4VhNqPw0k-2OqwCs9MghfSF7ctsaqdL0Gpyg-Kn2BXozTG7vEq9JP1YIL4pDQJNnnpLhjfqXb4zNF9k4SumDxXigMMT2VQUqwxduaz7KQZSdwqKztO2Id9wFVC0DvA",
-        "dnt": "1",
-        "origin": "https://zoommer.ge",
-        "os": "web",
-        "priority": "u=1, i",
-        "referer": "https://zoommer.ge/",
-        "sec-ch-ua": '"Not/A)Brand";v="8", "Chromium";v="126", "Google Chrome";v="126"',
-        "sec-ch-ua-mobile": "?0",
-        "sec-ch-ua-platform": '"Windows"',
-        "sec-fetch-dest": "empty",
-        "sec-fetch-mode": "cors",
-        "sec-fetch-site": "same-site",
-        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+    'accept': 'application/json, text/plain, */*',
+    'accept-language': 'ka',
+    'authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJBcGkiLCJpc3MiOiJodHRwczovL2FwaS56b29tbWVyLmdlIiwiZXhwIjoyMDgwMDI3MTk1LCJzdWIiOiJab29tZXJXZWIiLCJzY29wZSI6Ilpvb21lckFwaSIsImNsaWVudF9pZCI6Ilpvb21lcldlYiIsImlhdCI6MTc2NDY1Mjc5NSwibmJmIjoxNzY0NjUyNzk1fQ.moTI0NNL9ClQEOUmbQyTLpEmgf8-M1JdIlQtGqNggTA',
+    'cache-control': 'no-cache',
+    'dnt': '1',
+    'origin': 'https://zoommer.ge',
+    'os': 'web',
+    'pragma': 'no-cache',
+    'priority': 'u=1, i',
+    'referer': 'https://zoommer.ge/',
+    'sec-ch-ua': '"Chromium";v="142", "Google Chrome";v="142", "Not_A Brand";v="99"',
+    'sec-ch-ua-mobile': '?1',
+    'sec-ch-ua-platform': '"Android"',
+    'sec-fetch-dest': 'empty',
+    'sec-fetch-mode': 'cors',
+    'sec-fetch-site': 'same-site',
+    'user-agent': 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Mobile Safari/537.36',
     }
 
     cats = {
@@ -39,6 +41,7 @@ class Products:
         "Tablets": "877",
         "E-Books": "1086",
         "Blades": "1211",
+        "Screen protectors": "569",
     }
 
     list_cats = list(cats.keys())
@@ -50,7 +53,7 @@ class Products:
         else:
             self.category = "855"
         self.id_category = self.cats.get(self.category, None)
-        self.min_price = 100
+        self.min_price = 50
         self.max_price = 5500
 
         self.params = {
@@ -69,6 +72,7 @@ class Products:
             params=self.params,
             headers=self.headers,
         ).json()
+        # print(json.dumps(response, indent=4, ensure_ascii=False))
         result = response.get("products")
         return result
 
