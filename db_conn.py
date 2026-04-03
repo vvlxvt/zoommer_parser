@@ -1,7 +1,7 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from datetime import date
-from db_model import create_item_class
+from db_model import get_item_model
 
 
 class ConnectionDB:
@@ -20,7 +20,7 @@ class ConnectionDB:
 
     def init_db(self, category):
         """Инициализация базы данных и создание всех таблиц"""
-        self.Item = create_item_class(category)
+        self.Item = get_item_model(category)
         self.Item.__table__.create(bind=self.engine, checkfirst=True)
         print(f"таблица {self.Item.__name__} создана")
 
@@ -50,7 +50,7 @@ class ConnectionDB:
 
     def upload_from_base(self, cat: str, id) -> dict:
         session = self.get_session()
-        request_class = create_item_class(cat)
+        request_class = get_item_model(cat)
         product = session.query(request_class).filter_by(id=id).first()
         return product
 
